@@ -1,20 +1,19 @@
-//--------------------------------------------------
-//  Bi-Directional OSC messaging Websocket <-> UDP
-//--------------------------------------------------
-var osc = require('osc'),
-	WebSocket = require('ws');
+const os = require('os');
+const path = require('path');
+const express = require('express');
+const osc = require('osc');
+const WebSocket = require('ws');
+const app = express();
+const port = 3000;
 
-var getIPAddresses = function () {
-	var os = require('os'),
-		interfaces = os.networkInterfaces(),
-		ipAddresses = [];
+const getIPAddresses = () => {
+	const interfaces = os.networkInterfaces();
+	const ipAddresses = [];
 
-	for (var deviceName in interfaces) {
-		var addresses = interfaces[deviceName];
+	for (const deviceName in interfaces) {
+		const addresses = interfaces[deviceName] || [];
 
-		for (var i = 0; i < addresses.length; i++) {
-			var addressInfo = addresses[i];
-
+		for (const addressInfo of addresses) {
 			if (addressInfo.family === 'IPv4' && !addressInfo.internal) {
 				ipAddresses.push(addressInfo.address);
 			}
@@ -24,37 +23,40 @@ var getIPAddresses = function () {
 	return ipAddresses;
 };
 
-var udp = new osc.UDPPort({
+app.use(express.static(path.join(__dirname, 'public')));
+app.listen(process.env.PORT || port);
+app.get('/', (req, res) => {
+	res.sendFile(__dirname + '/index.html');
+});
+
+const udp = new osc.UDPPort({
 	localAddress: '0.0.0.0',
 	localPort: 7400,
 	remoteAddress: '127.0.0.1',
 	remotePort: 7500,
 });
 
-udp.on('ready', function () {
-	var ipAddresses = getIPAddresses();
+udp.on('ready', () => {
+	const ipAddresses = getIPAddresses();
 	console.log('Listening for OSC over UDP.');
-	ipAddresses.forEach(function (address) {
-		console.log(' Host:', address + ', Port:', udp.options.localPort);
-	});
+	ipAddresses.forEach((address) => console.log(' Host:', address + ', Port:', udp.options.localPort));
 	console.log('Broadcasting OSC over UDP to', udp.options.remoteAddress + ', Port:', udp.options.remotePort);
-
 	udp.on('message', (data) => console.log(data));
 });
 
 udp.open();
 
-var wss = new WebSocket.Server({
+const wss = new WebSocket.Server({
 	port: 8081,
 });
 
-wss.on('connection', function (socket) {
+wss.on('connection', (socket) => {
 	console.log('A Web Socket connection has been established!');
-	var socketPort = new osc.WebSocketPort({
+	const socketPort = new osc.WebSocketPort({
 		socket: socket,
 	});
 
-	var relay = new osc.Relay(udp, socketPort, {
+	const relay = new osc.Relay(udp, socketPort, {
 		raw: true,
 	});
 });

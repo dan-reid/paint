@@ -956,8 +956,6 @@ var Paint = (function () {
 		snapshot.resolutionScale = this.resolutionScale;
 
 		this.snapshotIndex += 1;
-
-		this.refreshDoButtons();
 	};
 
 	Paint.prototype.applySnapshot = function (snapshot) {
@@ -1009,8 +1007,6 @@ var Paint = (function () {
 			this.snapshotIndex -= 1;
 		}
 
-		this.refreshDoButtons();
-
 		this.needsRedraw = true;
 	};
 
@@ -1021,23 +1017,7 @@ var Paint = (function () {
 			this.snapshotIndex += 1;
 		}
 
-		this.refreshDoButtons();
-
 		this.needsRedraw = true;
-	};
-
-	Paint.prototype.refreshDoButtons = function () {
-		if (this.canUndo()) {
-			this.undoButton.className = 'button do-button-active';
-		} else {
-			this.undoButton.className = 'button do-button-inactive';
-		}
-
-		if (this.canRedo()) {
-			this.redoButton.className = 'button do-button-active';
-		} else {
-			this.redoButton.className = 'button do-button-inactive';
-		}
 	};
 
 	Paint.prototype.save = function () {
