@@ -4,7 +4,7 @@ const express = require('express');
 const osc = require('osc');
 const WebSocket = require('ws');
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 const getIPAddresses = () => {
 	const interfaces = os.networkInterfaces();
@@ -24,39 +24,43 @@ const getIPAddresses = () => {
 };
 
 app.use(express.static(path.join(__dirname, 'public')));
-app.listen(process.env.PORT || port);
+
 app.get('/', (req, res) => {
 	res.sendFile(__dirname + '/index.html');
 });
 
-const udp = new osc.UDPPort({
-	localAddress: '0.0.0.0',
-	localPort: 7400,
-	remoteAddress: '127.0.0.1',
-	remotePort: 7500,
-});
+app.listen(port, () => {
+	console.log(`Server listening on port ${port}.\nStarting upd server....`);
 
-udp.on('ready', () => {
-	const ipAddresses = getIPAddresses();
-	console.log('Listening for OSC over UDP.');
-	ipAddresses.forEach((address) => console.log(' Host:', address + ', Port:', udp.options.localPort));
-	console.log('Broadcasting OSC over UDP to', udp.options.remoteAddress + ', Port:', udp.options.remotePort);
-	udp.on('message', (data) => console.log(data));
-});
-
-udp.open();
-
-const wss = new WebSocket.Server({
-	port: 8081,
-});
-
-wss.on('connection', (socket) => {
-	console.log('A Web Socket connection has been established!');
-	const socketPort = new osc.WebSocketPort({
-		socket: socket,
+	const udp = new osc.UDPPort({
+		localAddress: '0.0.0.0',
+		localPort: 7400,
+		remoteAddress: '127.0.0.1',
+		remotePort: 7500,
 	});
 
-	const relay = new osc.Relay(udp, socketPort, {
-		raw: true,
+	udp.on('ready', () => {
+		const ipAddresses = getIPAddresses();
+		ipAddresses.forEach((address) => console.log(' Host:', address + ', Port:', udp.options.localPort));
+		console.log('Broadcasting OSC over UDP to', udp.options.remoteAddress + ', Port:', udp.options.remotePort);
+		udp.on('message', (data) => console.log(data));
+	});
+
+	udp.open();
+
+	console.log(`Establishing a Web Socket connection...`);
+	const wss = new WebSocket.Server({
+		port: 8081,
+	});
+
+	wss.on('connection', (socket) => {
+		console.log('A Web Socket connection has been established!');
+		const socketPort = new osc.WebSocketPort({
+			socket: socket,
+		});
+
+		const relay = new osc.Relay(udp, socketPort, {
+			raw: true,
+		});
 	});
 });
